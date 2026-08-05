@@ -626,6 +626,10 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
         details.put(VmDetailConstants.MEMORY_OVER_COMMIT_RATIO, CapacityManager.MemOverprovisioningFactor.value().toString());
         _clusterDetailsDao.persist(cluster.getId(), details);
 
+        if (HypervisorType.External.equals(hypervisorType) && extension != null) {
+            extensionsManager.registerExtensionWithCluster(cluster, extension, externalDetails);
+        }
+
         boolean success = false;
         try {
             try {
