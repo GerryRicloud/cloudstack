@@ -1061,6 +1061,21 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
             public void doInTransactionWithoutResult(final TransactionStatus status) {
                 logger.debug("Releasing private IP address of host with UUID [{}].", host.getUuid());
                 _dcDao.releasePrivateIpAddress(host.getPrivateIpAddress(), host.getDataCenterId(), null);
+
+                // Transit the agent status to Removed inside this transaction so it is the single
+                // writer of the status change: the async disconnect task scheduled below writes
+                // the same row from another thread, and that concurrent write can abort this
+                // transaction's connection, silently losing the writes above. Once the status is
+                // Removed here, HostDaoImpl.updateState's optimistic guard turns the async task's
+                // write into a no-op.
+                final HostVO hostToTransit = _hostDao.findById(hostId);
+                if (hostToTransit != null && hostToTransit.getStatus() != Status.Removed) {
+                    try {
+                        _agentMgr.agentStatusTransitTo(hostToTransit, Status.Event.Remove, _nodeId);
+                    } catch (final CloudRuntimeException e) {
+                        logger.warn("Failed to transit host with UUID [{}] to Removed status in delete transaction", host.getUuid(), e);
+                    }
+                }
                 _agentMgr.disconnectWithoutInvestigation(hostId, Status.Event.Remove);
 
                 // delete host details
@@ -1145,6 +1160,14 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
                 annotationDao.removeByEntityType(AnnotationService.EntityType.HOST.name(), host.getUuid());
             }
         });
+
+        // Verify the soft delete actually persisted: a mid-transaction connection swap can lose
+        // the writes above while commit() still succeeds, leaving a half-deleted host reported
+        // as successfully deleted. Fail loudly so the caller can retry.
+        final HostVO deletedHost = _hostDao.findByIdIncludingRemoved(hostId);
+        if (deletedHost != null && deletedHost.getRemoved() == null) {
+            throw new CloudRuntimeException(String.format("Host with UUID [%s] was not removed from the database after the delete transaction", host.getUuid()));
+        }
 
         if (clusterId != null) {
             _agentMgr.notifyMonitorsOfRemovedHost(host.getId(), clusterId);
