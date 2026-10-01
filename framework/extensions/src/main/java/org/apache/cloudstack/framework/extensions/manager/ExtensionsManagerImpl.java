@@ -1438,8 +1438,10 @@ public class ExtensionsManagerImpl extends ManagerBase implements ExtensionsMana
                 extensionResourceResponse.setCreated(extensionResourceMapVO.getCreated());
                 if (ExtensionResourceMap.ResourceType.Cluster.equals(extensionResourceMapVO.getResourceType())) {
                     Cluster cluster = clusterDao.findById(extensionResourceMapVO.getResourceId());
-                    extensionResourceResponse.setId(cluster.getUuid());
-                    extensionResourceResponse.setName(cluster.getName());
+                    if (cluster != null) {
+                        extensionResourceResponse.setId(cluster.getUuid());
+                        extensionResourceResponse.setName(cluster.getName());
+                    }
                 } else if (ExtensionResourceMap.ResourceType.PhysicalNetwork.equals(extensionResourceMapVO.getResourceType())) {
                     PhysicalNetworkVO pn = physicalNetworkDao.findById(extensionResourceMapVO.getResourceId());
                     if (pn != null) {
