@@ -1834,6 +1834,16 @@ public class AgentManagerImpl extends ManagerBase implements AgentManager, Handl
     }
 
     public boolean disconnectAgent(final HostVO host, final Status.Event e, final long msId) {
+        if (e.equals(Status.Event.Remove) && host.getStatus() == Status.Removed) {
+            // Removed is terminal in the agent status FSM: a host already in Removed - e.g. one left
+            // half-deleted by an interrupted deleteHost - would always fail the transition below
+            // with NoTransition. The fields this method would set for Remove are nulled by
+            // doDeleteHost's own row update, so treat it as a successful no-op to keep deleteHost
+            // re-runnable.
+            logger.debug("Host {} is already in Removed status, nothing to disconnect", host);
+            return true;
+        }
+
         host.setDisconnectedOn(new Date());
         if (e.equals(Status.Event.Remove)) {
             host.setGuid(null);
