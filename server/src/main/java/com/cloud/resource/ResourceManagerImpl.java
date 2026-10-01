@@ -669,6 +669,11 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
             throw new DiscoveryException("Unable to add the external cluster");
         } finally {
             if (!success) {
+                // registerExtensionWithCluster commits its map row before discovery runs;
+                // undo it too or the row outlives the removed cluster as an orphan.
+                if (extension != null) {
+                    extensionsManager.unregisterExtensionWithCluster(cluster, extension.getId());
+                }
                 _clusterDetailsDao.deleteDetails(cluster.getId());
                 _clusterDao.remove(cluster.getId());
             }
