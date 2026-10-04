@@ -54,6 +54,15 @@ router.beforeEach((to, from, next) => {
     store.dispatch('SetServer', server)
   }
 
+  if (window.location.search.includes('verifyOauth') && new URLSearchParams(window.location.search).get('code') !== null) {
+    // An OAuth callback starts a fresh login; without purging the stale local
+    // markers the branch below discards the authorization code and bounces
+    // the user back to the login page.
+    vueProps.$localStorage.remove(ACCESS_TOKEN)
+    Cookies.remove('userid')
+    Cookies.remove('userid', { path: '/client' })
+  }
+
   const validLogin = vueProps.$localStorage.get(ACCESS_TOKEN) || Cookies.get('userid') || Cookies.get('userid', { path: '/client' })
   if (validLogin) {
     var currentURL = new URL(window.location.href)
