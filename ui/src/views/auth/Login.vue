@@ -370,6 +370,14 @@ export default {
             this.oauthGoogleRedirectUri = this.googleredirecturi
             this.oauthKeycloakRedirectUri = this.keycloakredirecturi
             this.oauthKeycloakAuthorizeUrl = this.keycloakauthorizeurl
+            if (this.oauthKeycloakProvider && !this.oauthGithubProvider && !this.oauthGoogleProvider &&
+              !sessionStorage.getItem('oauth-auto-redirect-attempted') && this.$route.query.local === undefined) {
+              // Auto-redirect to the IdP once per browser tab when keycloak is the
+              // only OAuth provider; "#/user/login?local=1" keeps the local form.
+              sessionStorage.setItem('oauth-auto-redirect-attempted', 'true')
+              this.handleKeycloakProviderAndDomain()
+              window.location.href = this.getKeycloakUrl()
+            }
           } else {
             this.oauthGithubProvider = false
             this.oauthGoogleProvider = false
