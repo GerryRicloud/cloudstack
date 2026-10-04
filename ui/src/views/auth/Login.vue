@@ -111,52 +111,10 @@
           </a-input>
         </a-form-item>
       </a-tab-pane>
-      <a-tab-pane key="saml" :disabled="idps.length === 0">
-        <template #tab>
-          <span>
-            <audit-outlined />
-            {{ $t('label.login.single.signon') }}
-          </span>
-        </template>
-        <a-form-item v-if="$config.multipleServer" name="server" ref="server">
-          <a-select
-            size="large"
-            :placeholder="$t('server')"
-            v-model:value="form.server"
-            @change="onChangeServer"
-            showSearch
-            optionFilterProp="label"
-            :filterOption="(input, option) => {
-              return option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }" >
-            <a-select-option v-for="item in $config.servers" :key="(item.apiHost || '') + item.apiBase" :label="item.name">
-              <template #prefix>
-                <database-outlined />
-              </template>
-              {{ item.name }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item name="idp" ref="idp">
-          <a-select
-            v-model:value="form.idp"
-            showSearch
-            optionFilterProp="label"
-            :filterOption="(input, option) => {
-              return option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }" >
-            <a-select-option v-for="(idp, idx) in idps" :key="idx" :value="idp.id" :label="idp.orgName">
-              {{ idp.orgName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-      </a-tab-pane>
       <a-tab-pane key="oauth" :disabled="!socialLogin">
         <template #tab>
-          <span style="display: inline-flex; align-items: center; gap: 4px; color: inherit;">
-            <img src="/assets/github.svg" alt="GitHub" class="oauth-tab-icon" :class="{ 'oauth-tab-icon--disabled': !socialLogin }" style="width: 16px; height: 16px; display: block;" />
-            <img src="/assets/google.svg" alt="Google" class="oauth-tab-icon" :class="{ 'oauth-tab-icon--disabled': !socialLogin }" style="width: 16px; height: 16px; display: block;" />
-            <span>{{ $t('label.login.external') }}</span>
+          <span>
+            {{ $t('label.login.external') }}
           </span>
         </template>
         <a-form-item name="oauthDomain">
@@ -266,7 +224,6 @@ export default {
   },
   data () {
     return {
-      idps: [],
       customActiveKey: 'cs',
       customActiveKeyOauth: false,
       loginBtn: false,
@@ -362,17 +319,6 @@ export default {
       }
     },
     fetchData () {
-      getAPI('listIdps').then(response => {
-        if (response) {
-          this.idps = response.listidpsresponse.idp || []
-          this.idps.sort(function (a, b) {
-            if (a.orgName < b.orgName) { return -1 }
-            if (a.orgName > b.orgName) { return 1 }
-            return 0
-          })
-          this.form.idp = this.idps[0].id || ''
-        }
-      })
       this.fetchOauthProviders()
       postAPI('forgotPassword', {}).then(response => {
         this.forgotPasswordEnabled = response.forgotpasswordresponse.enabled
@@ -600,13 +546,6 @@ export default {
               this.requestFailed(err)
               this.state.loginBtn = false
             })
-        } else if (this.customActiveKey === 'saml') {
-          this.state.loginBtn = false
-          var samlUrl = this.$config.apiBase + '?command=samlSso'
-          if (values.idp) {
-            samlUrl += ('&idpid=' + values.idp)
-          }
-          window.location.href = samlUrl
         }
       }).catch(error => {
         this.formRef.value.scrollToField(error.errorFields[0].name)
@@ -695,11 +634,6 @@ export default {
 
   :deep(.tab-center .ant-tabs-tab) {
     margin: 0 16px 0 0;
-  }
-
-  .oauth-tab-icon--disabled {
-    filter: grayscale(100%);
-    opacity: 0.45;
   }
 
   .mobile & {
